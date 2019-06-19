@@ -11,7 +11,7 @@ loader.load( 'models/gltf/Soldier.glb', function ( gltf ) {
 			//create normalMaterial
 			object.normalMaterial = new THREE.MeshNormalMaterial({
         			morphTargets: object.material.morphTargets,
-          	      	skinning: object.material.skinning
+          	    	  	skinning: object.material.skinning
 			} );
 			if (object.material.normalMap){
 				object.normalMaterial.normalMap = object.material.normalMap;
