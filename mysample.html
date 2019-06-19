@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 	<head>
-		<title>three.js webgl - vrm loader</title>
+		<title>three.js webgl - ssao hack</title>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 		<link type="text/css" rel="stylesheet" href="main.css">
@@ -9,10 +9,7 @@
 
 	<body>
 		<div id="info">
-			<a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> - VRMLoader<br />
-			Alicia by
-			<a href="https://3d.nicovideo.jp/works/td32797" target="_blank" rel="noopener">Dwango</a> /
-			<a href="http://3d.nicovideo.jp/alicia/rule.html">License</a><br />
+			<a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> - ssao hack<br />
 		</div>
 
 		<script src="../build/three.js"></script>
@@ -134,18 +131,18 @@
 			}
 			function initModel() {
 				// model
-				var loader = new THREE.VRMLoader();
-				loader.load( 'models/vrm/Alicia/0.vrm', function ( vrm ) {
-					gvrm = vrm;
+				//var loader = new THREE.VRMLoader();
+				//loader.load( 'models/vrm/Alicia/0.vrm', function ( vrm ) {
+					//gvrm = vrm;
 					// VRMLoader doesn't support VRM Unlit extension yet so
 					// converting all materials to MeshBasicMaterial here as workaround so far.
-					genSMat(vrm);
+					//genSMat(vrm);
 					var loader2 = new THREE.GLTFLoader();
 					for (let i = 1; i > 0; -- i){
 						loader2.load( 'models/gltf/Soldier.glb', function ( gltf ) {
 							ggltf = gltf;
 							genSMat(gltf);
-							model = gvrm.scene;
+							//model = gvrm.scene;
 							model = gltf.scene;
 							model.position.x = model.position.x + i - 1;
 							//skeleton = new THREE.SkeletonHelper( model );
@@ -168,7 +165,7 @@
 							setWeight( runAction, 0.0 );
 							setWeight( newAction, 0.0 );
 							
-							gvrm.scene.animations = animations;
+							//gvrm.scene.animations = animations;
 							scene.add( model );
 							actions.forEach( function ( action ) {
 								action.play();
@@ -176,7 +173,7 @@
 							mixers.push(mixer);
 						} );
 					}
-				} );
+				//} );
 			}
 			function init() {
 
@@ -359,8 +356,8 @@
 					ssaoPass.minDistance = 0.001;
 					//ssaoPass.output = parseInt( THREE.SSAOPass.OUTPUT.SSAO );
 				}
-				composer.addPass( renderPass );
-				//composer.addPass( ssaoPass );
+				//composer.addPass( renderPass );
+				composer.addPass( ssaoPass );
 
 				controls = new THREE.OrbitControls( camera, renderer.domElement );
 				controls.target.set( 0, 0.9, 0 );
