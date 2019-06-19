@@ -4,14 +4,14 @@ fix ssao skinning problem
 but you need create normal material for each object by yourself.
 
 sample:
-
+```javascript
 loader.load( 'models/gltf/Soldier.glb', function ( gltf ) {
 
   gltf.scene.traverse( function ( object ) {
   
 						if ( object.material ) {
             
-              //create normalMaterial
+             						 //create normalMaterial
               
 							object.normalMaterial = new THREE.MeshNormalMaterial( {
               
@@ -36,4 +36,4 @@ loader.load( 'models/gltf/Soldier.glb', function ( gltf ) {
 					} );
 
 });
-
+```
