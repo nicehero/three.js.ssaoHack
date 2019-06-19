@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - vrm loader</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<link type="text/css" rel="stylesheet" href="main.css">
+	</head>
+
+	<body>
+		<div id="info">
+			<a href="http://threejs.org" target="_blank" rel="noopener">three.js</a> - VRMLoader<br />
+			Alicia by
+			<a href="https://3d.nicovideo.jp/works/td32797" target="_blank" rel="noopener">Dwango</a> /
+			<a href="http://3d.nicovideo.jp/alicia/rule.html">License</a><br />
+		</div>
+
+		<script src="../build/three.js"></script>
+		<script src="js/libs/inflate.min.js"></script>
+
+		<script src="js/controls/OrbitControls.js"></script>
+		<script src="js/loaders/GLTFLoader.js"></script>
+		<script src="js/loaders/VRMLoader.js"></script>
+		<script src="js/loaders/FBXLoader.js"></script>
+
+		<script src="js/WebGL.js"></script>
+		<script src="js/libs/stats.min.js"></script>
+		<script src="js/effects/OutlineEffect.js"></script>
+		
+		<script src="js/shaders/SSAOShader.js"></script>
+		<script src="js/shaders/NormalMapShader.js"></script>
+
+		<script src="js/postprocessing/EffectComposer.js"></script>
+		<script src="js/postprocessing/RenderPass.js"></script>
+		<script src="js/postprocessing/ShaderPass.js"></script>
+		<script src="js/postprocessing/SSAOPass.js"></script>
+		<script src="js/postprocessing/SAOPass.js"></script>
+		<script src="js/shaders/CopyShader.js"></script>
+		<script src="js/math/SimplexNoise.js"></script>
+		<script src="js/shaders/SAOShader.js"></script>
+		<script src="js/shaders/DepthLimitedBlurShader.js"></script>
+		<script src="js/shaders/UnpackDepthRGBAShader.js"></script>
+
+		<script>
+
+			if ( WEBGL.isWebGLAvailable() === false ) {
+
+				document.body.appendChild( WEBGL.getWebGLErrorMessage() );
+
+			}
+			var clock;
+			var container, stats, controls;
+			var camera, scene, renderer, light;
+			var scene1;
+			var gvrm;
+			var gvrm2;
+			var threeTone;
+			var effect;
+			var model;
+			var mixers = [];
+			var composer;
+			var ssaoPass;
+			var dirLight;
+			var newAni;
+			var yg;
+			var depthRenderTarget;
+			init();
+			animate();
+			
+			function genObjMat2(mat){
+				//return mat;
+				//var material = new THREE.MeshBasicMaterial();
+				
+				/*THREE.Material.prototype.copy.call( material, mat );
+				material.color.copy( mat.color );
+				material.map = mat.map;
+				material.lights = false;
+				material.skinning = mat.skinning;
+				material.morphTargets = mat.morphTargets;
+				material.morphNormals = mat.morphNormals;
+				*/
+				var material = new THREE.MeshToonMaterial( { color: 0xFFFFFF, gradientMap: threeTone } );
+				
+				if (mat.name.indexOf("Eye") != -1 ){
+					//console.log(mat);
+					mat.map.premultiplyAlpha = true;
+					material.alphaTest = 1.0;
+				}
+				material.map = mat.map;
+				material.normalMap = mat.normalMap;
+				material.skinning = true;
+				//material.lights = false;
+				material.name = mat.name;
+				material.morphTargets = mat.morphTargets;
+				material.morphTargets = true;
+				material.morphNormals = true;
+				return material;
+			}
+			
+			function genObjMat(object){
+				if ( object.isMesh ){
+					object.castShadow = true;
+					//object.receiveShadow = true;
+				}
+				if ( Array.isArray( object.material ) ) {
+					for ( var i = 0, il = object.material.length; i < il; i ++ ) {
+						genObjMat2(object.material[ i ]);
+						object.material[ i ] = material;
+					}
+				} 
+				else {
+					var material = genObjMat2(object.material);
+					object.material = material;
+				}
+				
+			}
+			
+			function genSMat(s){
+				s.scene.traverse( function ( object ) {
+						if ( object.material ) {
+							genObjMat(object);
+							object.normalMaterial = new THREE.MeshNormalMaterial( {
+								morphTargets: object.material.morphTargets,
+								skinning: object.material.skinning
+							} );
+							if (object.material.normalMap){
+								object.normalMaterial.normalMap = object.material.normalMap;
+							}
+						}
+						if ( object.isMesh){
+							
+						}
+					} );
+			}
+			function initModel() {
+				// model
+				var loader = new THREE.VRMLoader();
+				loader.load( 'models/vrm/Alicia/0.vrm', function ( vrm ) {
+					gvrm = vrm;
+					// VRMLoader doesn't support VRM Unlit extension yet so
+					// converting all materials to MeshBasicMaterial here as workaround so far.
+					genSMat(vrm);
+					var loader2 = new THREE.GLTFLoader();
+					for (let i = 1; i > 0; -- i){
+						loader2.load( 'models/gltf/Soldier.glb', function ( gltf ) {
+							ggltf = gltf;
+							genSMat(gltf);
+							model = gvrm.scene;
+							model = gltf.scene;
+							model.position.x = model.position.x + i - 1;
+							//skeleton = new THREE.SkeletonHelper( model );
+							//skeleton.visible = false;
+							//scene.add( skeleton );
+
+							var animations = gltf.animations;
+
+
+							let mixer = new THREE.AnimationMixer( model );
+							
+
+							let idleAction = mixer.clipAction( animations[ 0 ] );
+							let walkAction = mixer.clipAction( animations[ 3 ] );
+							let runAction = mixer.clipAction( animations[ 1 ] );
+							let newAction = mixer.clipAction( newAni );
+							let actions = [ idleAction, walkAction, runAction,newAction ];
+							setWeight( idleAction, 1.0 );
+							setWeight( walkAction, 0.0 );
+							setWeight( runAction, 0.0 );
+							setWeight( newAction, 0.0 );
+							
+							gvrm.scene.animations = animations;
+							scene.add( model );
+							actions.forEach( function ( action ) {
+								action.play();
+							} );
+							mixers.push(mixer);
+						} );
+					}
+				} );
+			}
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.25, 20 );
+				camera.position.set( 0, 1.6, - 2.2 );
+				clock = new THREE.Clock();
+
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0xeeeeee );
+				scene1 = new THREE.Scene();
+				scene1.background = new THREE.Color( 0xeeeeee );
+				light = new THREE.HemisphereLight( 0xbbbbff, 0x444422 );
+				light.position.set( 0, 1, 0 );
+				scene.add(scene1);
+				scene1.add( light );
+				
+				dirLight = new THREE.DirectionalLight( 0xffffff );
+				dirLight.position.set( - 3, 10, - 10 );
+				dirLight.castShadow = true;
+				dirLight.shadow.camera.top = 4;
+				dirLight.shadow.camera.bottom = - 4;
+				dirLight.shadow.camera.left = - 4;
+				dirLight.shadow.camera.right = 4;
+				dirLight.shadow.camera.near = 0.1;
+				dirLight.shadow.camera.far = 40;
+				console.log(dirLight.shadow.map);
+				//dirLight.shadow.map.height = 1024;
+				//dirLight.shadow.map.width = 1024;
+				dirLight.shadow.mapSize.height = 1024;
+				dirLight.shadow.mapSize.width = 1024;
+				dirLight.shadow.radius = 0.5;
+				scene1.add( dirLight );
+
+				threeTone = new THREE.TextureLoader().load( 'textures/gradientMaps/threeTone.jpg' );
+				threeTone.minFilter = THREE.NearestFilter;
+				threeTone.magFilter = THREE.NearestFilter;
+				
+				var fbxloader = new THREE.FBXLoader();
+				fbxloader.load( 'models/fbx/Samba Dancing.fbx', function ( object ) {
+					/*
+					mixer = new THREE.AnimationMixer( object );
+
+					var action = mixer.clipAction( object.animations[ 0 ] );
+					action.play();
+
+					object.traverse( function ( child ) {
+
+						if ( child.isMesh ) {
+
+							child.castShadow = true;
+							child.receiveShadow = true;
+
+						}
+
+					} );
+
+					scene.add( object );
+					*/
+					newAni = object.animations[ 0 ];
+					initModel();
+				} );
+				fbxloader.load( 'models/fbx/yg.fbx', function ( object ) {
+					object.rotation.z = 3.141592;
+					object.position.x = 0;
+					object.position.z = 1.0;
+					object.traverse( function ( object ) {
+						if ( object.material ) {
+							//genObjMat(object);
+							object.normalMaterial = new THREE.MeshNormalMaterial( {
+								morphTargets: object.material.morphTargets,
+								skinning: object.material.skinning
+							} );
+
+						}
+						if ( object.isMesh){
+							object.castShadow = true;
+							object.receiveShadow = true;
+						}
+					} );
+
+					scene.add( object );
+					yg = object;
+				});
+
+
+
+				var geometry = new THREE.BoxBufferGeometry( 0.5, 0.5, 0.5 );
+
+				for ( var i = 0; i < 2; i ++ ) {
+
+					var material = new THREE.MeshLambertMaterial( {
+						color: Math.random() * 0xffffff
+					} );
+
+					var mesh = new THREE.Mesh( geometry, material );
+					mesh.position.x = -1;
+					mesh.position.y = 1;
+					mesh.position.z = 0;
+					mesh.rotation.x = Math.random();
+					mesh.rotation.y = Math.random();
+					mesh.rotation.z = Math.random();
+					mesh.castShadow = true;
+					mesh.normalMaterial = new THREE.MeshNormalMaterial( {
+						morphTargets: material.morphTargets,
+						skinning: material.skinning
+					} );
+
+					//mesh.scale.setScalar( Math.random() * 10 + 2 );
+					scene1.add( mesh );
+				}
+				
+				var plane = new THREE.Mesh( new THREE.PlaneBufferGeometry( 100, 100 ), new THREE.MeshPhongMaterial( { color: 0x999999, depthWrite: false } ) );
+				plane.rotation.x = - Math.PI / 2;
+				plane.receiveShadow = true;
+				plane.normalMaterial = new THREE.MeshNormalMaterial( {
+					morphTargets: plane.material.morphTargets,
+					skinning: plane.material.skinning
+				} );
+
+				scene1.add( plane );
+
+				renderer = new THREE.WebGLRenderer( { antialias: false } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				//renderer.setPixelRatio( 0.2 );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				renderer.gammaOutput = true;
+				//renderer.gammaFactor = 2.2;
+				renderer.shadowMap.enabled = true;
+
+				container.appendChild( renderer.domElement );
+				
+				effect = new THREE.OutlineEffect( renderer );
+				
+				composer = new THREE.EffectComposer( renderer );
+
+				var width = window.innerWidth;
+				var height = window.innerHeight;
+				var renderPass = new THREE.RenderPass( scene, camera );
+				if (false)
+				{
+					var pars = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter,format: THREE.RGBAFormat, stencilBuffer: false };
+					depthRenderTarget = new THREE.WebGLRenderTarget( window.innerWidth, window.innerHeight, pars );
+
+					ssaoPass = new THREE.ShaderPass( THREE.SSAOShader );
+					ssaoPass.renderToScreen = true;
+					ssaoPass.uniforms[ 'tDepth' ].value = depthRenderTarget.texture;
+					//ssaoPass.uniforms[ 'size' ].value.set( window.innerWidth, window.innerHeight );
+					ssaoPass.uniforms[ 'cameraNear' ].value = camera.near;
+					ssaoPass.uniforms[ 'cameraFar' ].value = camera.far;
+					//ssaoPass.uniforms[ 'onlyAO' ].value = false;
+					//ssaoPass.uniforms[ 'aoClamp' ].value = 1.0;
+					//ssaoPass.uniforms[ 'lumInfluence' ].value = 0.7;
+				}
+				else
+				{
+					ssaoPass = new THREE.SSAOPass( scene, camera, width, height );
+					//ssaoPass.depthMaterial.skinning = true;
+					//ssaoPass.depthMaterial.morphTargets = true;
+					ssaoPass.normalMaterial.skinning = true;
+					ssaoPass.normalMaterial.morphTargets = true;
+					ssaoPass.normalMaterial.morphNormals = true;
+					ssaoPass.blurMaterial.skinning = true;
+					ssaoPass.blurMaterial.morphTargets = true;
+					ssaoPass.blurMaterial.morphNormals = true;
+					ssaoPass.copyMaterial.skinning = true;
+					ssaoPass.copyMaterial.morphTargets = true;
+					ssaoPass.copyMaterial.morphNormals = true;
+					ssaoPass.depthRenderMaterial.skinning = true;
+					ssaoPass.depthRenderMaterial.morphTargets = true;
+					ssaoPass.depthRenderMaterial.morphNormals = true;
+					ssaoPass.ssaoMaterial.skinning = true;
+					ssaoPass.ssaoMaterial.morphTargets = true;
+					ssaoPass.ssaoMaterial.morphNormals = true;
+					
+					ssaoPass.kernelRadius = 0.08;
+					ssaoPass.maxDistance = 0.1;
+					ssaoPass.minDistance = 0.001;
+					//ssaoPass.output = parseInt( THREE.SSAOPass.OUTPUT.SSAO );
+				}
+				composer.addPass( renderPass );
+				//composer.addPass( ssaoPass );
+
+				controls = new THREE.OrbitControls( camera, renderer.domElement );
+				controls.target.set( 0, 0.9, 0 );
+				controls.update();
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+				// stats
+				stats = new Stats();
+				container.appendChild( stats.dom );
+
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				composer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			//
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+				
+				var mixerUpdateDelta = clock.getDelta();
+				for (let i in mixers)
+				{
+					mixers[i].update( mixerUpdateDelta );
+					//console.log("mixer.update");
+				}
+				
+
+
+				stats.update();
+				//renderer.render( scene, camera );
+				composer.render( scene, camera );
+				//effect.render( scene, camera );
+
+			}
+
+			function setWeight( action, weight ) {
+
+				action.enabled = true;
+				action.setEffectiveTimeScale( 1 );
+				action.setEffectiveWeight( weight );
+
+			}
+
+		</script>
+
+	</body>
+</html>
