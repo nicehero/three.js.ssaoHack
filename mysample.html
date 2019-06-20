@@ -58,7 +58,7 @@
 			var composer;
 			var ssaoPass;
 			var dirLight;
-			var newAni;
+			//var newAni;
 			var yg;
 			var depthRenderTarget;
 			init();
@@ -158,12 +158,12 @@
 							let idleAction = mixer.clipAction( animations[ 0 ] );
 							let walkAction = mixer.clipAction( animations[ 3 ] );
 							let runAction = mixer.clipAction( animations[ 1 ] );
-							let newAction = mixer.clipAction( newAni );
-							let actions = [ idleAction, walkAction, runAction,newAction ];
+							//let newAction = mixer.clipAction( newAni );
+							let actions = [ idleAction, walkAction, runAction ];//,newAction
 							setWeight( idleAction, 1.0 );
 							setWeight( walkAction, 0.0 );
 							setWeight( runAction, 0.0 );
-							setWeight( newAction, 0.0 );
+							//setWeight( newAction, 0.0 );
 							
 							//gvrm.scene.animations = animations;
 							scene.add( model );
@@ -213,31 +213,10 @@
 				threeTone = new THREE.TextureLoader().load( 'textures/gradientMaps/threeTone.jpg' );
 				threeTone.minFilter = THREE.NearestFilter;
 				threeTone.magFilter = THREE.NearestFilter;
+				initModel();
 				
 				var fbxloader = new THREE.FBXLoader();
-				fbxloader.load( 'models/fbx/Samba Dancing.fbx', function ( object ) {
-					/*
-					mixer = new THREE.AnimationMixer( object );
 
-					var action = mixer.clipAction( object.animations[ 0 ] );
-					action.play();
-
-					object.traverse( function ( child ) {
-
-						if ( child.isMesh ) {
-
-							child.castShadow = true;
-							child.receiveShadow = true;
-
-						}
-
-					} );
-
-					scene.add( object );
-					*/
-					newAni = object.animations[ 0 ];
-					initModel();
-				} );
 				fbxloader.load( 'models/fbx/yg.fbx', function ( object ) {
 					object.rotation.z = 3.141592;
 					object.position.x = 0;
